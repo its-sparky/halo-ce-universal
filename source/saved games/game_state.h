@@ -47,6 +47,9 @@ void game_state_save(
 	void);
 void game_state_revert(
 	void);
+/* port: where the game state is in this run (main.c's core dump) */
+void *game_state_port_base_address(
+	void);
 /* port: network co-op's (game_state.c) */
 boolean game_state_port_saved_game_valid(
 	void);

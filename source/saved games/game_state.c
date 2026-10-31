@@ -350,6 +350,13 @@ void game_state_save(
 	return;
 }
 
+/* port: where the game state is in this run */
+void *game_state_port_base_address(
+	void)
+{
+	return game_state_globals.base_address;
+}
+
 /* port: whether game_state_revert has a saved state to go back to */
 boolean game_state_port_saved_game_valid(
 	void)
@@ -500,12 +507,18 @@ static boolean game_state_header_valid(
 
 	/* a save written where the game state sat at some other address, or with
 	the game's image moved elsewhere (PORT_IMAGE_SHIFT), holds pointers into a
-	range this process is not using, so there is nothing in it to restore. Not
-	worth reporting: a save from another device or another build is simply not
-	ours, and the caller starts a new game instead */
+	range this process is not using, so there is nothing in it to restore, and
+	the caller starts a new game instead. Said in the log: the Xbox memory
+	window, which holds the game state, can land elsewhere from one run to
+	the next on the same device, and a checkpoint lost that way looks like
+	one never saved */
 	if (header->layout_address != (unsigned long)game_state_globals.base_address ||
 		header->image_shift != PORT_IMAGE_SHIFT)
 	{
+		error(_error_silent, "the saved game is not taken: its game state was at %08lx (this run's is at %08lx), "
+			"image shift %08lx (%08lx)", (unsigned long)header->layout_address,
+			(unsigned long)game_state_globals.base_address, (unsigned long)header->image_shift,
+			(unsigned long)PORT_IMAGE_SHIFT);
 		return FALSE;
 	}
 
