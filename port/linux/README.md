@@ -229,7 +229,8 @@ backtrace to the standard error. To find the function at the address, enter
 
 The keyboard and the mouse are a control scheme of their own for the player
 of controller 1: each action has up to two keys or mouse buttons, which
-Settings > Controls Setup (or `[controls]` in `config.toml`) changes. The
+Settings > Controls Setup changes, for each profile (its `settings.toml`; `[controls]` in `config.toml`
+for those it has not changed). The
 game adds the input of the first gamepad to controller 1. The other
 gamepads operate controllers 2 to 4. With two or more players on this
 computer (co-op, or split screen in a network game) and only one gamepad,
@@ -542,8 +543,20 @@ changes the useful settings, writes them into the file (only their lines
 change) and applies them at once, but `audio.enabled`, and `display.menus`
 from the next main menu.
 
+Each profile keeps some settings of its own, in `settings.toml` in its folder
+(beside its `blam.sav`): its keys (`[controls]`, Controls Setup), its mouse's
+(`input.mouse_sensitivity`, `input.mouse_vertical_sensitivity`,
+`input.invert_mouse`, `input.mouse_aim_assist`) and its gyroscope's
+(`input.gyro_aim` and the four after it, Gyro Aim). Those menus write them
+there, for the profile they were opened from. A setting the profile's file
+does not have is `config.toml`'s, which is also the setting of a game played
+with no profile. The keys and the mouse are player 1's profile's; with the
+gyroscope, each local player has their own profile's. A profile renamed keeps
+its file, and one deleted takes it with it.
+
 Each setting has an environment variable. The environment variable changes
-the setting for one start of the game. It has priority over the file.
+the setting for one start of the game. It has priority over the file, and
+over a profile's own `settings.toml`.
 
 | Setting | Default | Environment variable | Function |
 | --- | --- | --- | --- |

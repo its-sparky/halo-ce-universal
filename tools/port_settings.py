@@ -373,8 +373,10 @@ SCREENS["gamepad_setup/gyro"] = {
          "Tilting it up looks down.", None),
     ],
     # The other controller rows are profile fields, written when the profile
-    # is saved. These are config.toml, and B (and Cancel) only went back, so
-    # a change was kept for this run and gone after quitting.
+    # is saved. These are the profile's own settings.toml (config.toml's where
+    # it has none: port/linux/src/port_config.h), written at once, and B (and
+    # Cancel) only went back, so a change was kept for this run and gone after
+    # quitting.
     "save_on_leave": True,
 }
 

@@ -122,6 +122,8 @@ int config_boolean(char const *name);
 int config_write_boolean(const char *name, int value);
 int config_default(char const *name, char *text, unsigned int size);
 char const *config_string(char const *name);
+int config_profile_text(char const *folder, char const *name, char *text, unsigned int size);
+int config_profile_write(char const *folder, char const *name, char const *value);
 void platform_display_apply(void);
 int halo_hdr_calibration_available(void);
 void halo_hdr_calibration_show(int pattern, int paper_white, int peak_brightness);
@@ -360,8 +362,20 @@ static boolean profile_setting_boolean(short field)
 	return field != 0 && field != 4 && field != 5;
 }
 
-/* a setting's value as text, or (default_value) its default: config.toml's,
-or the profile's */
+/* the folder of the profile whose own settings (its keys, its mouse's and
+its gyroscope's: port/linux/src/port_config.h) the menus show and write: the
+one being edited, else player 1's; NULL for none, and config.toml's */
+static char const *settings_profile_folder(void)
+{
+	static char folder[1024];
+	long index = player_ui_get_edit_player_profile() ?
+		player_ui_get_edit_profile_index() : player_ui_get_active_player_profile_index(0);
+
+	return player_ui_get_profile_settings_folder(index, folder, sizeof(folder)) ? folder : NULL;
+}
+
+/* a setting's value as text, or (default_value) its default: config.toml's
+(or the profile's own settings.toml's), or the profile's */
 static boolean setting_text(char const *name, char *text, unsigned int size, boolean default_value)
 {
 	short index;
@@ -381,8 +395,11 @@ static boolean setting_text(char const *name, char *text, unsigned int size, boo
 	}
 	if (strncmp(name, "profile.", 8))
 	{
-		if (!(default_value ? config_default(name, text, size) : config_text(name, text, size)))
+		if (!(default_value ? config_default(name, text, size) :
+			config_profile_text(settings_profile_folder(), name, text, size)))
+		{
 			return FALSE;
+		}
 		/* (display.mode empty: display.fullscreen's, as the window has it:
 		sdl_platform.c) */
 		if (!strcmp(name, "display.mode") && !text[0])
@@ -446,7 +463,7 @@ static boolean setting_write(char const *name, char const *value)
 		return TRUE;
 	}
 	if (strncmp(name, "profile.", 8))
-		return config_write(name, value);
+		return config_profile_write(settings_profile_folder(), name, value);
 	for (index = 0; index < NUMBEROF(profile_settings); index++)
 	{
 		struct player_profile *profile = player_ui_get_edit_player_profile();
@@ -493,9 +510,10 @@ static boolean setting_save(struct widget_instance *widget)
 		return FALSE;
 	if (widget->parameters.list.selected_index == setting->loaded_index)
 		return TRUE;
-	if (!config_write(setting->setting, setting->values[widget->parameters.list.selected_index]))
+	if (!config_profile_write(settings_profile_folder(), setting->setting,
+		setting->values[widget->parameters.list.selected_index]))
 	{
-		platform_log("menus: could not write %s to config.toml", setting->setting);
+		platform_log("menus: could not write %s", setting->setting);
 		return FALSE;
 	}
 	platform_log("menus: %s = %s (from the next start)", setting->setting, setting->values[widget->parameters.list.selected_index]);
@@ -2790,27 +2808,30 @@ static boolean controls_load(boolean defaults)
 		if (defaults)
 			config_default(controls[control].setting, text, sizeof(text));
 		else
-			snprintf(text, sizeof(text), "%s", config_string(controls[control].setting));
+			config_profile_text(settings_profile_folder(), controls[control].setting, text, sizeof(text));
 		control_bindings_read(control, text);
 	}
 	controls_screen.capturing_control = NONE;
 	return TRUE;
 }
 
-/* "controls screen change set" (OK) */
+/* "controls screen change set" (OK): into the profile's own settings */
 static boolean controls_save(void)
 {
+	char const *folder = settings_profile_folder();
 	short control;
 	boolean result = TRUE;
 
 	for (control = 0; control < NUMBEROF(controls); control++)
 	{
 		char text[128];
+		char saved[128];
 
 		control_bindings_text(control, text, sizeof(text));
-		if (strcmp(text, config_string(controls[control].setting)))
+		config_profile_text(folder, controls[control].setting, saved, sizeof(saved));
+		if (strcmp(text, saved))
 		{
-			if (config_write(controls[control].setting, text))
+			if (config_profile_write(folder, controls[control].setting, text))
 				platform_log("menus: %s = %s", controls[control].setting, text);
 			else
 				result = FALSE;
