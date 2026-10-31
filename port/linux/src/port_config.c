@@ -1277,6 +1277,11 @@ static const struct config_setting config_settings[] =
 		"A core of the first level played (d:\\core\\game_state_<address>.bin,\n"
 		"named for where the game state is) written at this game tick, for\n"
 		"comparing saved games across runs; 0 for none." },
+	{ "debug.core_load", _config_string, "\"\"", "HALO_CORE_LOAD", _environment_value, _platform_all,
+		"A core (a file in d:\\core, as debug.core_dump_tick writes) loaded into\n"
+		"the first level played at debug.core_dump_tick, in place of writing\n"
+		"one: a core of a run whose window lay elsewhere, for trying saved games\n"
+		"across windows; empty for none." },
 	{ "debug.network_test", _config_string, "\"\"", "HALO_NETWORK_TEST", _environment_value, _platform_all,
 		"Automated system link sessions for testing (port/linux/game/network_test.c):\n"
 		"\"host:<map>\" hosts a game on that map, \"local:<map>\" plays a local (split\n"

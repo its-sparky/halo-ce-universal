@@ -2257,18 +2257,22 @@ static void main_load_core_private(
 }
 
 long config_integer(const char *name);
+const char *config_string(const char *name);
 
 /* port: a core of the first level written at the game tick that
 config.toml's debug.core_dump_tick names, named
 for where this run's game state is: two runs with the window at different
 places give two cores to compare, which says which of the game state's
-words are addresses (tools/game_state_compare.py) */
+words are addresses (tools/game_state_compare.py). With debug.core_load,
+that core is loaded at the tick instead, as core_load_name does: a core of
+another run's window, taken in this one's */
 static void main_port_core_dump(
 	void)
 {
 	static long tick = -1;
 	static boolean written = FALSE;
 	char name[64];
+	const char *load;
 
 	if (tick < 0)
 		tick = config_integer("debug.core_dump_tick");
@@ -2278,6 +2282,13 @@ static void main_port_core_dump(
 		return;
 	}
 	written = TRUE;
+	load = config_string("debug.core_load");
+	if (load && *load)
+	{
+		error(_error_silent, "loading the core d:\\core\\%s at tick %ld", load, (long)game_time_get());
+		main_load_core_name(load);
+		return;
+	}
 	sprintf(name, "game_state_%08lx.bin", (unsigned long)game_state_port_base_address());
 	game_state_save_core(name);
 	error(_error_silent, "wrote the core d:\\core\\%s at tick %ld", name, (long)game_time_get());
