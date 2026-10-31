@@ -86,6 +86,15 @@ PEAK_BRIGHTNESSES = [("AUTO", "0")] + [(str(nits), str(nits)) for nits in
                                        [*range(250, 600, 25), *range(600, 1200, 50), *range(1200, 2001, 100),
                                         2500, 3000, 4000, 5000, 6000, 8000, 10000]]
 
+# Gamepads' BUTTON LAYOUT's values (profile.button_preset)
+BUTTON_LAYOUTS = [("DEFAULT", "0"), ("SWAP TRIGGERS", "1"), ("SWAP A, L TRIGGER", "2"), ("SWAP B, L TRIGGER", "3"),
+                  ("SWAP B, R STICK", "4"),
+                  # (the port's: the later games' layouts as Halo: CE's controls
+                  # go, source/interface/player_ui.c; upstream's Fishsticks and
+                  # Recon after this fork's, whose numbers saved profiles keep)
+                  ("BOXER", "5"), ("GREEN THUMB", "6"), ("BUMPER JUMPER", "7"), ("RECLAIMER", "8"),
+                  ("FISHSTICKS", "9"), ("RECON", "10")]
+
 # each screen: its folder below PE, its screen's widget (the name the profile
 # menu opens), its header (widget, bitmap), the row spacing, and its rows:
 # (label, setting, [(shown, value)], help, platform[, key]): platform is None
@@ -328,15 +337,13 @@ SCREENS = {
              "Flying vehicles pitch as aircraft do: pushing up\nflies down.", None),
             ("AUTO-CENTER LOOK:", "profile.autocenter", YES_NO,
              "Level the view while walking.", None),
-            ("BUTTON LAYOUT:", "profile.button_preset",
-             [("DEFAULT", "0"), ("SWAP TRIGGERS", "1"), ("SWAP A, L TRIGGER", "2"), ("SWAP B, L TRIGGER", "3"),
-              ("SWAP B, R STICK", "4"),
-              # (the port's: the later games' layouts as Halo: CE's controls
-              # go, source/interface/player_ui.c; upstream's Fishsticks and
-              # Recon after this fork's, whose numbers saved profiles keep)
-              ("BOXER", "5"), ("GREEN THUMB", "6"), ("BUMPER JUMPER", "7"), ("RECLAIMER", "8"),
-              ("FISHSTICKS", "9"), ("RECON", "10")],
-             "Which of the controller's buttons does what (not\nthe keyboard's: Controls Setup sets those).", None),
+            ("BUTTON LAYOUT:", "profile.button_preset", BUTTON_LAYOUTS,
+             "Which of the controller's buttons does what (not\nthe keyboard's: Controls Setup sets those).",
+             "desktop android web"),
+            # (the Switch and the PS5 have no keyboard, nor Controls Setup:
+            # menu_tags.c's platform_hidden_profile_items)
+            ("BUTTON LAYOUT:", "profile.button_preset", BUTTON_LAYOUTS,
+             "Which of the controller's buttons does what.", "switch ps5", "button_preset_console"),
             ("STICK LAYOUT:", "profile.joystick_preset",
              [("DEFAULT", "0"), ("SOUTHPAW", "1"), ("LEGACY", "2"), ("LEGACY SOUTHPAW", "3")],
              "Which stick moves and which looks.", None),
@@ -390,6 +397,8 @@ _gamepads["categories"].insert(0, (
 SCREENS["gamepad_setup/layout"] = {
     "screen": "button_layout_screen", "header": _gamepads["header"], "spacing": 30, "help_top": 133,
     "rows": [row for row in _gamepads["rows"] if row[1] in _layout_rows],
+    # (the consoles' BUTTON LAYOUT in the other's place)
+    "same_place": ["button_preset_console"],
 }
 _gamepads["rows"] = [row for row in _gamepads["rows"] if row[1] not in _layout_rows]
 

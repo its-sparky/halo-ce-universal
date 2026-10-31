@@ -2427,7 +2427,13 @@ static void gamepad_layout_overlay(struct widget_instance *overlay)
 	short button_preset = _button_preset_standard;
 	short joystick_preset = _joystick_preset_standard;
 
+	/* (the Switch's and the PS5's BUTTON LAYOUT is a row of its own:
+	tools/port_settings.py) */
+#if defined(HALO_SWITCH) || defined(HALO_PS5)
+	layout_spinner_value(named(screen_of(overlay), "button_preset_console_spinner", 0), &button_preset);
+#else
 	layout_spinner_value(named(screen_of(overlay), "button_preset_spinner", 0), &button_preset);
+#endif
 	layout_spinner_value(named(screen_of(overlay), "joystick_preset_spinner", 0), &joystick_preset);
 	layout_overlay_show(overlay, button_preset, joystick_preset);
 }
