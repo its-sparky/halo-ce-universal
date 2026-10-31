@@ -360,9 +360,14 @@ DELETE (pressed twice), EXPORT (Android) and BACK. A recording shorter than
   behind's zoom), and a swipe elsewhere is the right one: the free
   camera's aim, behind's orbit (`halo_linux_touch_look`, which no player
   reads in a replay).
-- **The end.** The replay's end, or the game's, returns to the main menu
-  four seconds later (`network_game_abort`), unless the d-pad's left
-  goes back first.
+- **The end.** The replay's end, or the game's, returns to the Theater
+  half a second later (`network_game_abort`), unless the d-pad's left
+  goes back first: the main menu loads, and opens the Theater over it
+  (`network_replay_theater_wanted`, as a replay left from its pause menu
+  does too), B going back to the main menu. The records after the game's end are not handed to
+  the client: the host's switch to the next game's pregame among them
+  would leave it in a pregame with no host, which it reports as the host
+  gone (`playback_feed`).
 - **Keyframes.** Every 10 seconds of the game, as the playback first
   reaches them (the first at its start), `playback_keyframe_take` keeps
   the game as it is in memory, copied in one go and compressed on a

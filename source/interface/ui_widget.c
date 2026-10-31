@@ -5081,9 +5081,19 @@ void main_screen_shell_load(
 		/* port: the menus' main menu, when they are there (port/linux/game/menu_tags.c) */
 		{
 			extern char const *pc_menus_root_name(void);
+			extern boolean network_replay_theater_wanted(void);
 
 			if (!ui_widget_load_by_name_or_tag(pc_menus_root_name(), NONE, NULL, NONE, NONE, NONE, NONE))
 				error(_error_silent, "failed to load main screen shell window");
+			/* (port: back from a replay, the Theater it was played from,
+			over the main menu, which B goes back to:
+			port/linux/game/network_replay_playback.c) */
+			else if (network_replay_theater_wanted() &&
+				!ui_widget_load_by_name_or_tag("pc\\main_menu\\theater\\theater_screen", NONE, NULL, NONE,
+					widget_globals.active_widgets[0]->definition_tag_index, NONE, NONE))
+			{
+				error(_error_silent, "failed to load the theater");
+			}
 		}
 		if (widget_globals.main_menu_deferred_error_code != NONE)
 		{

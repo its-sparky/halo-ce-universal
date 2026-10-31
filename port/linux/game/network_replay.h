@@ -121,6 +121,10 @@ char const *network_replay_page_address(void);
 
 /* ---------- playback (network_replay_playback.c) */
 
+/* whether a replay has stopped since this was last asked: the main menu,
+as it loads, opens the Theater it was played from (ui_widget.c) */
+boolean network_replay_theater_wanted(void);
+
 /* plays the replay at path (its game is loaded at the next frame); FALSE,
 with why in why, for one that cannot be played (not a replay, an older
 format, a network version it cannot read) */

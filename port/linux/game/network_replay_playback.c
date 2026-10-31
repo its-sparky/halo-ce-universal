@@ -62,7 +62,8 @@ buttons, each as Kenney's picture of the controller's
 line with the playhead a circle on it, and the replay's length
 (playback_draw_seek)
 (network_replay_playback_draw). The game's end, or the replay's, returns
-to the main menu a few seconds later.
+to the Theater half a second later (the main menu opens it:
+network_replay_theater_wanted).
 
 Keyframes (playback_keyframe_take): every 10 seconds of the game, as the
 playback first reaches them, the game state's parts in use and the
@@ -206,7 +207,7 @@ static struct
 /* the largest replay read (all of it, at once) */
 #define REPLAY_MAXIMUM_FILE_SIZE (256 * 1024 * 1024)
 /* how long the main menu waits after the replay's end, or the game's */
-#define REPLAY_END_MILLISECONDS 4000
+#define REPLAY_END_MILLISECONDS 500
 /* the least time between two of D-pad Down's resets of the free camera */
 #define REPLAY_CAMERA_RESET_MILLISECONDS 150
 
@@ -1004,14 +1005,30 @@ void network_replay_playback_started(
 	error(_error_log, "replay: the game is loaded; playing from tick %ld", playback.start_tick);
 }
 
+/* a replay stopped, for the main menu to open the Theater again
+(network_replay_theater_wanted) */
+static boolean playback_theater_wanted;
+
 void network_replay_playback_stop(
 	void)
 {
 	if (playback.setting_up)
 		return;
 	if (playback.data)
+	{
 		error(_error_log, "replay: stopped");
+		playback_theater_wanted = TRUE;
+	}
 	playback_free();
+}
+
+boolean network_replay_theater_wanted(
+	void)
+{
+	boolean wanted = playback_theater_wanted;
+
+	playback_theater_wanted = FALSE;
+	return wanted;
 }
 
 /* whether the button was pressed on any controller since the last idle */
@@ -1092,6 +1109,12 @@ static void playback_feed(
 			break;
 		}
 		if (tick > game_time_get())
+			break;
+		/* (the game over: none of the records after it, the host's
+		switch to the next game's pregame among them, which a client with
+		no host to talk to takes for the host gone. A keyframe put back
+		has the client in the game again) */
+		if (network_game_client_port_in_postgame(client))
 			break;
 		playback.next += REPLAY_RECORD_HEADER_SIZE + size;
 		if (size < sizeof(message_header))
