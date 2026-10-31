@@ -203,3 +203,13 @@ union. They need no fixing up.
 
 Moving the image changed nothing in the game state but the lruv cache's two
 procedures, which `game_state_image_accept` already puts back.
+
+## The fix, tried by hand (2026-10-31)
+
+On the Z Fold, a10 on Hard played as usual with `window_base = 0xC0000000`
+and `image_base = 0xE4000000`, then Save and Quit (the profile's
+`savegame.bin`: `layout_address` c1a00000, `image_shift` a8000000). The next
+run, with `window_base = 0xA0000000` and `image_base = 0xE8000000`, took it
+with Continue: "the saved game was written with the window at c0000000 and
+the image shifted by a8000000; moved to a0000000 and ac000000", "the saved
+game is taken".
