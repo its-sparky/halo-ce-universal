@@ -1,5 +1,14 @@
 # Changelog
 
+## Build 131
+
+- Saved games: a checkpoint or Save and Quit made on Android, Switch or PS5 is no longer lost between runs. The game's memory can land somewhere else each time it starts, and a save made with it elsewhere was refused; such saves now load, and so do saves made before this build. (thelinkin3000)
+- Profiles: each player profile keeps its own Controls Setup, Mouse Settings and Gyro Aim, saved in its folder beside its saved games. Profiles start with the settings you had before, until you change them. In split screen on Switch and PS5, each player uses their own profile's gyro settings. (thelinkin3000)
+- Profiles: on Switch and PS5, the profile settings no longer list Controls Setup and Mouse Settings, which are for keyboard and mouse; gamepads' BUTTON LAYOUT is in their place. (thelinkin3000)
+- Replays: a new view, CINEMATIC, after the free camera (Y). It is the free camera with no controls: it starts behind the player and follows them, zooming in as they get farther away, and moves back behind them whenever a wall or scenery hides them for a moment, or at once as they respawn out of sight. (thelinkin3000)
+- Replays: the free camera zooms in on the player you're watching about twice as far as before. (thelinkin3000)
+- Replays: when a replay ends you're back in the Theater half a second later, instead of at the main menu four seconds later, and without the notice that the game's server couldn't be reached. Leaving a replay from its pause menu goes back to the Theater too. (thelinkin3000)
+
 ## Build 130
 
 - Replays: the D-pad scrubs. A tap of left or right skips 10 seconds and taps add up; held, it slides a marker along the seek bar, and the playback catches up to it. (thelinkin3000)
