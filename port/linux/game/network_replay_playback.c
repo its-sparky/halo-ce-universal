@@ -273,7 +273,7 @@ narrowed as they go further than this (world units), down to this, so they
 stay the size they were, eased over this long (seconds) */
 #define FREE_CAMERA_TRACK_TIME 0.15f
 #define FREE_CAMERA_ZOOM_DISTANCE 5.0f
-#define FREE_CAMERA_NARROWEST DEGREES_TO_RADIANS(15.0f)
+#define FREE_CAMERA_NARROWEST DEGREES_TO_RADIANS(8.0f)
 #define FREE_CAMERA_ZOOM_TIME 0.3f
 /* the keyframes: one every 10 seconds of the game, as the playback first
 reaches it, compressed in memory (zlib's fastest level), up to this much
