@@ -20,7 +20,7 @@ them. The client sends nothing (network_game_client_write).
 
 The view (network_replay_camera, made once a frame by
 network_replay_playback_frame: main.c's window and the sound's listener)
-is one of three, Y going round them: behind the player watched (or the
+is one of four, Y going round them: behind the player watched (or the
 vehicle they ride), drawn where the frame draws them (render
 interpolation), kept on this side of walls, turning with them until the
 right stick flies it round them (playback_behind_camera; its click turns
@@ -38,7 +38,11 @@ a tripod, placed where behind's would be when it is chosen, tracking the
 player (playback_free_camera_track) as it moves until the right stick takes
 the aim (R3 or D-pad Up tracks again, or stops; D-pad Down or L3 puts it
 behind the player again, tracking them, as when it was chosen), and zooming on them
-as they go further until it first moves (playback_free_camera_zoom). D-pad
+as they go further until it first moves (playback_free_camera_zoom); or a
+cinematic one, the free camera with no controls: placed and tracking as it,
+and placed behind the player again whenever the level hides them from it
+for CINEMATIC_HIDDEN_TIME (playback_cinematic_sight), at once in the
+CINEMATIC_SPAWN_TIME after they spawn. D-pad
 Up turns behind with the player again too, as R3 does.
 Through the eyes, the aim turns smoothly between the facings the replay
 has of the player (playback_index_facings, playback_eyes_aim) and the host's
@@ -275,6 +279,11 @@ stay the size they were, eased over this long (seconds) */
 #define FREE_CAMERA_ZOOM_DISTANCE 5.0f
 #define FREE_CAMERA_NARROWEST DEGREES_TO_RADIANS(8.0f)
 #define FREE_CAMERA_ZOOM_TIME 0.3f
+/* the cinematic camera: how long the player may be hidden from it (seconds)
+before it is placed behind them again, and how long after they spawn it is
+placed at once if they are (seconds) */
+#define CINEMATIC_HIDDEN_TIME 0.2f
+#define CINEMATIC_SPAWN_TIME 0.5f
 /* the keyframes: one every 10 seconds of the game, as the playback first
 reaches it, compressed in memory (zlib's fastest level), up to this much
 memory in all (and this many); and how long after one d-pad left goes to
@@ -377,6 +386,7 @@ enum
 	_replay_view_behind,
 	_replay_view_eyes,
 	_replay_view_free,
+	_replay_view_cinematic,
 	NUMBER_OF_REPLAY_VIEWS
 };
 
@@ -451,6 +461,12 @@ static struct
 	boolean free_placing;
 	boolean free_tracking;
 	boolean free_still;
+	/* the cinematic camera: how long the player has been hidden from it
+	(seconds), whether they have died since it was placed, and what is left
+	of the CINEMATIC_SPAWN_TIME after they spawned (seconds) */
+	real cinematic_hidden;
+	boolean cinematic_died;
+	real cinematic_spawned;
 	/* when D-pad Down last put the free camera back behind the
 	player (system_milliseconds: REPLAY_CAMERA_RESET_MILLISECONDS) */
 	unsigned long free_reset_at;
@@ -1660,7 +1676,7 @@ boolean network_replay_playback_idle(
 		playback.view = (short)((playback.view + 1) % NUMBER_OF_REPLAY_VIEWS);
 		/* (the free camera follows the player until it is flown; behind
 		turns with them until it is, at its distance) */
-		if (playback.view == _replay_view_free)
+		if (playback.view == _replay_view_free || playback.view == _replay_view_cinematic)
 			playback.free_placing = TRUE;
 		if (playback.view == _replay_view_behind)
 		{
@@ -2015,11 +2031,39 @@ static void playback_free_camera_zoom(
 		playback_ease(seconds, FREE_CAMERA_ZOOM_TIME);
 }
 
+/* the cinematic camera's sight of the player: hidden from it by the level,
+its scenery or its doors for CINEMATIC_HIDDEN_TIME (at all, in the
+CINEMATIC_SPAWN_TIME after they spawn), it is placed behind them again, as
+L3 places the free camera */
+static void playback_cinematic_sight(
+	long unit_index,
+	real seconds)
+{
+	real_point3d focus;
+	real_vector3d to;
+	struct collision_result collision;
+
+	playback_focus(unit_index, &focus);
+	to.i = focus.x - playback.free_position.x;
+	to.j = focus.y - playback.free_position.y;
+	to.k = focus.z - playback.free_position.z;
+	if (collision_test_vector(FREE_CAMERA_COLLISION_FLAGS, &playback.free_position, &to, NONE, &collision))
+	{
+		playback.cinematic_hidden += seconds;
+		if (playback.cinematic_spawned > 0.0f || playback.cinematic_hidden >= CINEMATIC_HIDDEN_TIME)
+			playback.free_placing = TRUE;
+	}
+	else
+		playback.cinematic_hidden = 0.0f;
+	playback.cinematic_spawned = MAX(playback.cinematic_spawned - seconds, 0.0f);
+}
+
 /* the free camera, a tripod: placed behind the player when it is chosen (as
 behind's would be, turned as they face), tracking them (R3 toggles it, the
 right stick takes the aim), moved by the left stick and the triggers, still
 tracking; FALSE, the camera left alone, while it cannot be placed (nobody
-to place it behind, and no camera before) */
+to place it behind, and no camera before). The cinematic camera is this,
+its sticks and swipes not heard */
 static boolean playback_free_camera(
 	long unit_index,
 	real seconds)
@@ -2029,6 +2073,21 @@ static boolean playback_free_camera(
 	real_vector3d move;
 
 	playback_sticks(&move_x, &move_y, &turn_x, &turn_y, &rise);
+	if (playback.view == _replay_view_cinematic)
+	{
+		move_x = move_y = turn_x = turn_y = rise = 0.0f;
+		playback.touch_yaw = playback.touch_pitch = 0.0f;
+		/* (a player who died: hidden as they spawn, followed at once) */
+		if (unit_index == NONE)
+			playback.cinematic_died = TRUE;
+		else if (playback.cinematic_died)
+		{
+			playback.cinematic_died = FALSE;
+			playback.cinematic_spawned = CINEMATIC_SPAWN_TIME;
+		}
+		if (!playback.free_placing && unit_index != NONE)
+			playback_cinematic_sight(unit_index, seconds);
+	}
 	if (playback.free_placing)
 	{
 		if (unit_index != NONE)
@@ -2045,6 +2104,9 @@ static boolean playback_free_camera(
 		playback.free_placing = FALSE;
 		playback.free_tracking = TRUE;
 		playback.free_still = TRUE;
+		playback.cinematic_hidden = 0.0f;
+		playback.cinematic_died = FALSE;
+		playback.cinematic_spawned = 0.0f;
 		playback.free_field_of_view = CAMERA_FIELD_OF_VIEW;
 		playback.free_focus_valid = FALSE;
 		playback.free_move_x = playback.free_move_y = playback.free_rise = 0.0f;
@@ -2442,8 +2504,10 @@ void network_replay_playback_frame(
 	}
 	unit_index = player ? player->unit_index : NONE;
 	playback.first_person = FALSE;
-	/* (the free camera, until it is placed, is the view before it) */
-	if (playback.view == _replay_view_free && playback_free_camera(unit_index, main_get_seconds_elapsed()))
+	/* (the free camera, until it is placed, is the view before it; the
+	cinematic one's too) */
+	if ((playback.view == _replay_view_free || playback.view == _replay_view_cinematic) &&
+		playback_free_camera(unit_index, main_get_seconds_elapsed()))
 		;
 	else if (unit_index == NONE)
 		return;
@@ -2972,7 +3036,7 @@ static void playback_draw_pause_menu(
 void network_replay_playback_draw(
 	void)
 {
-	static wchar_t const *const view_names[NUMBER_OF_REPLAY_VIEWS] = { L"BEHIND", L"EYES", L"FREE CAMERA" };
+	static wchar_t const *const view_names[NUMBER_OF_REPLAY_VIEWS] = { L"BEHIND", L"EYES", L"FREE CAMERA", L"CINEMATIC" };
 	/* (the third, R3: behind flown round the player, how to have it turn
 	with them again; the free camera, how to have it track them, or stop;
 	left out otherwise) */
