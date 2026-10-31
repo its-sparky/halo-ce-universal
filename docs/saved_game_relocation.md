@@ -137,3 +137,69 @@ devices of the same build and map.
 - The Lenovo's `config.toml` still has `window_base = 0xA0000000` and
   `core_dump_tick = 1800`; its profile's save was written at window
   0xA0000000.
+
+## The second experiment (2026-10-31)
+
+On the Galaxy Z Fold (SM-F971B, `com.halo.decomp`), with the source survey
+of every game state allocation in hand (the table below), four levels, two
+runs each, driven by `debug.benchmark` (`<map>:120`, the same views each
+run) with the core at tick 2700 (a30: `a30:90`, tick 1800):
+
+- run A: `window_base = 0xC0000000`; the image where the host put it, at
+  0x5a010000 (this phone holds 0x3c000000 at start-up, so its image moves
+  every run anyway)
+- run B: `window_base = 0xA0000000`, `image_base = 0xE4000000`
+  (`debug.image_base`; 0x50000000 was taken)
+
+The cores are written with mode 640 by the app; `adb exec-out run-as
+com.halo.decomp cat` reads them, `adb pull` cannot.
+
+    tools/game_state_compare.py A.bin 0xc0000000 B.bin 0xa0000000 \
+        --first-image 0x5a010000 --second-image 0xe4000000 --fields --unaligned
+
+| | a10 | a30 | b30 | c10 |
+|---|---|---|---|---|
+| pointers (aligned) | 2012 | 2722 | 4395 | 4153 |
+| into the tag data | 59 | 8 | 12 | 21 |
+| unaligned (all but noise in hs thread) | 37 | 38 | 45 | 40 |
+| image pointers | 0 | 2 | 2 | 0 |
+
+### What moved, field by field
+
+Every pointer found is one of these, which the source survey had already
+named:
+
+| Allocation | Field | Points into |
+|---|---|---|
+| header | `+0x12C` `layout_address` | (the port's own field) |
+| every data array | header `+0x34` `data` | its elements |
+| `objects` pool | header `+0x24`, `+0x30`, `+0x34` | itself |
+| `objects` pool blocks | block header `+0x8`, `+0xC`, `+0x10` | the `object` array, the pool |
+| `object` | element `+0x8` | its pool block |
+| `decal vertex cache` lruv | header `+0x3C` blocks; `+0x20`, `+0x24` the procedures | itself; the image (already put back on load) |
+| `hs thread` | `+0x10` stack, `+0x20` root result, and each frame's `previous` and `result`, at any byte | its own stack, hs globals |
+| `hud messaging` | `+0x118C` help_message, `+0x1190` objective.message (offset 0x154C, 0x1550 into the game state) | tag data |
+| `recorded animations` | `+0x10` event_stream | tag data |
+| `structure detail objects` (+0x990058) | cells' `z_reference_vector` (`+0x14`, stride 0x18), `layers[].cells` (+0x5100), `view_data.layers` (+0x5200) | tag data (the BSP), itself |
+
+Named by the survey but empty in these runs: the glow and glow particle
+links, the screen effect's two bitmaps, the hud messages' state icons and
+state message, the effects' function and impulse fields (always NULL).
+
+### What only looks moved
+
+Words whose bytes are a window address, but which are never read as one:
+leftovers of uninitialised stack copies, in padding or the unused tail of a
+union. They need no fixing up.
+
+- `particle +0x2C`, `particle system particles +0x18`, `contrail point
+  +0x18`: `struct location`'s `bonus` (the high half), which nothing reads.
+- `actor +0x554`, `+0x558`: `secondary_look_direction`'s union past an
+  object index.
+- the biped's `+0x38C` (pool block data): the padding after
+  `information_type`.
+- unaligned hits outside `hs thread` (b30's `cached object render states
+  +0xd`, a pool block's `+0xb05`): floats that differ in both runs anyway.
+
+Moving the image changed nothing in the game state but the lruv cache's two
+procedures, which `game_state_image_accept` already puts back.
